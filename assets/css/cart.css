@@ -1,0 +1,252 @@
+/* ===============================
+   CART MODAL (FORÇA VISUAL)
+=============================== */
+#cart-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: none !important;
+  z-index: 99999;
+}
+
+#cart-modal.show {
+  display: flex !important;
+  justify-content: flex-end;
+}
+
+/* ===============================
+   CART CONTAINER
+=============================== */
+#cart-modal .cart-container {
+  width: 100%;
+  max-width: 420px;
+  height: 100%;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===============================
+   HEADER
+=============================== */
+.cart-header {
+  padding: 16px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cart-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+/* ===============================
+   CONTENT
+=============================== */
+.cart-content {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+/* ===============================
+   ITEM
+=============================== */
+.cart-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f8f8f8;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.cart-item-image {
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.cart-item-details {
+  flex: 1;
+}
+
+.cart-item-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.cart-item-price {
+  font-size: 13px;
+  color: #666;
+}
+
+/* ===============================
+   CONTROLS
+=============================== */
+.cart-item-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.quantity-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: #eaeaea;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.quantity-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.quantity {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.quantity-btn.remove {
+  background: #ffe5e5;
+  color: #e53935;
+}
+
+/* ===============================
+   TOTAL DO ITEM
+=============================== */
+.cart-item-total {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1b8f3a;
+}
+
+/* ===============================
+   FOOTER FIXO
+=============================== */
+.cart-footer {
+  border-top: 1px solid #eee;
+  padding: 16px;
+  display: block !important;
+}
+
+.cart-total {
+  display: flex;
+  justify-content: space-between;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.total-price {
+  color: #1b8f3a;
+}
+
+/* ===============================
+   FINALIZAR COMPRA
+=============================== */
+.checkout-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #1b8f3a, #22b455);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ===============================
+   EMPTY CART
+=============================== */
+.empty-cart {
+  text-align: center;
+  color: #777;
+  margin-top: 40px;
+}
+
+/* ===========================
+   CONTROLES DE QUANTIDADE
+=========================== */
+
+.cart-item-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+/* Botão padrão */
+.quantity-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: #f1f3f5;
+  color: #000;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+/* Hover */
+.quantity-btn:hover {
+  background: #e0e0e0;
+}
+
+/* Quantidade */
+.cart-item-controls .quantity {
+  min-width: 20px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* Botão remover (lixeira) */
+.quantity-btn.remove {
+  background: #ffecec;
+  color: #e03131;
+}
+
+/* Hover remover */
+.quantity-btn.remove:hover {
+  background: #ffcccc;
+}
+
+/* ===========================
+   RESPONSIVO (MOBILE)
+=========================== */
+
+@media (max-width: 480px) {
+  .quantity-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 16px;
+  }
+
+  .cart-item-controls {
+    gap: 8px;
+  }
+}
