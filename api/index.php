@@ -105,6 +105,10 @@ $route->delete("/delete/id/{id}", "Categories:deleteCategory");
 $route->group("/recovery-password");
 $route->post("/add", "Products:createProduct");
 
+$route->group("/pedidos");
+$route->post("/add", "Products:createProduct");
+
+
 
 $route->group("null");
 

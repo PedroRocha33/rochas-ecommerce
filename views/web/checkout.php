@@ -110,7 +110,7 @@
 
                     <!-- FRETES -->
                     <div id="frete-opcoes"></div>
-
+                    <br>
                     <label class="frete-opcao retirada">
                         <input type="radio" name="frete" value="0" onchange="selecionarFrete(0)">
                         Retirada na loja (Grátis)

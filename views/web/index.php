@@ -26,8 +26,8 @@
                         Início
                     </a>
                 </div>
-                <div class="nav-item">
-                    <a href="ecommerce.html" class="nav-link" onclick="setActiveNav(this, 'produtos')">
+                <!-- <div class="nav-item">
+                    <a href="index.php" class="nav-link" onclick="setActiveNav(this, 'produtos')">
                         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path>
                             <path d="M3 6h18"></path>
@@ -35,7 +35,7 @@
                         </svg>
                         Produtos
                     </a>
-                </div>
+                </div> -->
                 <div class="nav-item">
                     <a href="sobre.html" class="nav-link" onclick="setActiveNav(this, 'servicos')">
                         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -44,7 +44,7 @@
                         Sobre
                     </a>
                 </div>
-                <div class="nav-item">
+                <!-- <div class="nav-item">
                     <a href="calculadoras.html" class="nav-link" onclick="setActiveNav(this, 'sobre')">
                         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="10"></circle>
@@ -53,7 +53,7 @@
                         </svg>
                         Ferramentas
                     </a>
-                </div>
+                </div> -->
                 <div class="nav-item">
                     <a href="contato.html" class="nav-link" onclick="setActiveNav(this, 'contato')">
                         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

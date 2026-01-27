@@ -28,6 +28,7 @@ $route->namespace("Source\\Web");
 */
 $route->get("/", "ProductController:index");
 $route->get("/checkout", "Site:checkout");
+$route->get("/login", "Site:login");
 
 /*
 |--------------------------------------------------------------------------

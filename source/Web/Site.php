@@ -20,6 +20,11 @@ class Site extends Controller
         echo $this->view->render("checkout",[]);
     }
 
+    public function login(): void
+    {
+        echo $this->view->render("login",[]);
+    }
+
     public function error (array $data): void
     {
         echo "Error {$data["errcode"]}...";
