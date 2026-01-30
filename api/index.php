@@ -106,7 +106,7 @@ $route->group("/recovery-password");
 $route->post("/add", "Products:createProduct");
 
 $route->group("/pedidos");
-$route->post("/add", "Products:createProduct");
+$route->post("/add", "Orders:createOrder");
 
 
 

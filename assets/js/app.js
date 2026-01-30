@@ -1,3 +1,4 @@
+// app.js
 // ===============================
 // ESTADO GLOBAL
 // ===============================
@@ -5,6 +6,7 @@ let allProducts = [];
 let allOrders = [];
 let allCategories = [];
 let editingProductId = null;
+let currentOrderId = null;
 
 // ===============================
 // INICIALIZAÇÃO
@@ -495,46 +497,116 @@ async function loadOrders() {
 
 function renderOrders(orders) {
     const tbody = document.getElementById('orders-table');
-    if (!tbody) return;
-    
-    if (orders.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="empty">Nenhum pedido encontrado</td></tr>';
+    tbody.innerHTML = '';
+
+    if (!orders.length) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="empty">Nenhum pedido encontrado</td>
+            </tr>
+        `;
         return;
     }
-    
-    tbody.innerHTML = '';
+
     orders.forEach(o => {
-        const tr = document.createElement('tr');
-        const statusClass = {
-            'pendente': 'badge-warning',
-            'processando': 'badge-info',
-            'enviado': 'badge-primary',
-            'entregue': 'badge-success',
-            'cancelado': 'badge-danger'
-        }[o.status] || 'badge-secondary';
-        
-        tr.innerHTML = `
-            <td>#${o.id}</td>
-            <td>
-                <strong>${escapeHtml(o.cliente_nome)}</strong><br>
-                <small>${escapeHtml(o.cliente_email)}</small>
-            </td>
-            <td>R$ ${parseFloat(o.total || 0).toFixed(2)}</td>
-            <td>${o.total_itens}</td>
-            <td>
-                <span class="badge ${statusClass}">
-                    ${capitalizeFirst(o.status)}
-                </span>
-            </td>
-            <td>${formatDate(o.criado_em)}</td>
-            <td>
-                <button class="btn-sm btn-edit" onclick="openOrderModal(${o.id}, '${o.status}')">
-                    📝 Status
-                </button>
-            </td>
+        tbody.innerHTML += `
+            <tr>
+                <td>#${o.pedido_id}</td>
+
+                <td>
+                    <strong>${o.cliente_nome}</strong><br>
+                    <small>${o.cliente_email}</small>
+                </td>
+
+                <td>R$ ${Number(o.total).toFixed(2)}</td>
+
+                <td>${o.total_itens}</td>
+
+                <td>
+                    <span class="badge status-${o.status}">
+                        ${o.status}
+                    </span>
+                </td>
+
+                <td>${new Date(o.criado_em).toLocaleDateString('pt-BR')}</td>
+
+                <td>
+                    <button class="btn-sm" onclick="viewOrder(${o.pedido_id})">
+                        📦 Detalhes
+                    </button>
+                </td>
+            </tr>
         `;
-        tbody.appendChild(tr);
     });
+}
+
+// ===============================
+// PEDIDOS - VER DETALHES
+// ===============================
+async function viewOrder(id) {
+    console.log('Carregando detalhes do pedido:', id);
+    
+    try {
+        const response = await fetch(`/rochas/api/orders.php?id=${id}`);
+        const pedido = await response.json();
+        
+        console.log('Pedido:', pedido);
+        
+        if (response.ok) {
+            currentOrderId = id;
+            
+            // Preencher dados do modal
+            document.getElementById('order-id').textContent = pedido.id;
+            document.getElementById('order-client').textContent = pedido.cliente_nome;
+            document.getElementById('order-email').textContent = pedido.cliente_email;
+            
+            // Endereço
+            const endereco = pedido.rua 
+                ? `${pedido.rua}, ${pedido.numero} - ${pedido.bairro}<br>${pedido.cidade}/${pedido.estado} - CEP: ${pedido.cep}`
+                : 'Endereço não informado';
+            document.getElementById('order-address').innerHTML = endereco;
+            
+            // Itens do pedido
+            const itemsTable = document.getElementById('order-items');
+            itemsTable.innerHTML = '';
+            
+            if (pedido.itens && pedido.itens.length > 0) {
+                pedido.itens.forEach(item => {
+                    itemsTable.innerHTML += `
+                        <tr>
+                            <td>
+                                ${item.produto_imagem ? 
+                                    `<img src="/rochas/storage/images/${item.produto_imagem}" 
+                                          alt="${escapeHtml(item.produto_nome)}" 
+                                          style="width: 40px; height: 40px; object-fit: cover; margin-right: 10px;">` 
+                                    : ''}
+                                ${escapeHtml(item.produto_nome)}
+                            </td>
+                            <td>${item.quantidade}</td>
+                            <td>R$ ${parseFloat(item.preco_unitario).toFixed(2)}</td>
+                        </tr>
+                    `;
+                });
+            } else {
+                itemsTable.innerHTML = '<tr><td colspan="3" class="empty">Nenhum item encontrado</td></tr>';
+            }
+            
+            // Status
+            document.getElementById('order-status').value = pedido.status;
+            
+            // Abrir modal
+            const modal = document.getElementById('order-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.style.display = 'flex';
+            }
+        } else {
+            showError(pedido.error || 'Erro ao carregar pedido');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        showError('Erro ao carregar pedido: ' + error.message);
+    }
 }
 
 // ===============================
@@ -553,36 +625,30 @@ function filterOrders() {
 }
 
 // ===============================
-// PEDIDOS - MODAL STATUS
+// PEDIDOS - MODAL
 // ===============================
-function openOrderModal(id, currentStatus) {
-    document.getElementById('order-id').value = id;
-    document.getElementById('order-status').value = currentStatus;
-    
-    const modal = document.getElementById('order-modal');
-    if (modal) {
-        modal.classList.remove('hidden');
-        modal.style.display = 'flex';
-    }
-}
-
 function closeOrderModal() {
     const modal = document.getElementById('order-modal');
     if (modal) {
         modal.classList.add('hidden');
         modal.style.display = 'none';
     }
+    currentOrderId = null;
 }
 
 async function updateOrderStatus() {
-    const id = document.getElementById('order-id').value;
+    if (!currentOrderId) {
+        showError('Nenhum pedido selecionado');
+        return;
+    }
+    
     const status = document.getElementById('order-status').value;
     
     try {
         const response = await fetch('/rochas/api/orders.php', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id, status })
+            body: JSON.stringify({ id: currentOrderId, status })
         });
         
         const result = await response.json();
@@ -598,6 +664,19 @@ async function updateOrderStatus() {
         console.error('Erro:', error);
         showError('Erro ao atualizar status: ' + error.message);
     }
+}
+
+// ===============================
+// GERAR ETIQUETA
+// ===============================
+function generateLabel() {
+    if (!currentOrderId) {
+        showError('Nenhum pedido selecionado');
+        return;
+    }
+    
+    // Abrir em nova janela ou gerar PDF
+    window.open(`/rochas/api/label.php?order_id=${currentOrderId}`, '_blank');
 }
 
 // ===============================
@@ -635,9 +714,25 @@ function showError(message) {
     alert('❌ ' + message);
 }
 
-function logout() {
-    if (confirm('Deseja realmente sair?')) {
-        window.location.href = '/rochas/logout.php';
+async function logout() {
+    if (!confirm('Deseja realmente sair?')) return;
+
+    try {
+        const response = await fetch('/rochas/views/app/logout.php', {
+            method: 'POST',
+            credentials: 'same-origin'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            window.location.href = 'http://localhost/rochas/login';
+        } else {
+            alert('Erro ao sair');
+        }
+    } catch (error) {
+        console.error('Erro no logout:', error);
+        alert('Erro ao conectar com o servidor');
     }
 }
 
@@ -656,5 +751,204 @@ document.addEventListener('keydown', (e) => {
         closeOrderModal();
     }
 });
+
+// Função viewOrder atualizada com TODAS as informações
+// ===============================
+// PEDIDOS - VER DETALHES (VERSÃO CORRIGIDA)
+// ===============================
+async function viewOrder(id) {
+    console.log('Carregando detalhes do pedido:', id);
+    
+    try {
+        const response = await fetch(`/rochas/api/orders.php?id=${id}`);
+        const pedido = await response.json();
+        
+        console.log('Pedido completo:', pedido);
+        
+        if (response.ok) {
+            currentOrderId = id;
+            
+            // ========== CABEÇALHO ==========
+            document.getElementById('order-id').textContent = pedido.id;
+            
+            // Badge de status no header
+            const statusBadge = document.getElementById('order-status-badge');
+            if (statusBadge) {
+                statusBadge.textContent = getStatusText(pedido.status);
+                statusBadge.className = `status-badge ${pedido.status}`;
+            }
+            
+            // ========== CLIENTE ==========
+            document.getElementById('order-client').textContent = pedido.cliente_nome || '-';
+            document.getElementById('order-email').textContent = pedido.cliente_email || '-';
+            
+            // Telefone (se disponível no endereço)
+            const phoneEl = document.getElementById('order-phone');
+            if (phoneEl) {
+                const phone = pedido.endereco?.telefone || 'Não informado';
+                phoneEl.textContent = phone;
+            }
+            
+            // ========== ENDEREÇO ==========
+            let enderecoHtml = '';
+            
+            if (pedido.endereco && pedido.endereco.rua) {
+                const end = pedido.endereco;
+                enderecoHtml = `
+                    <strong>${escapeHtml(end.nome || pedido.cliente_nome)}</strong><br>
+                    ${end.telefone ? `📞 ${escapeHtml(end.telefone)}<br>` : ''}
+                    📍 ${escapeHtml(end.rua)}, ${escapeHtml(end.numero)}${end.complemento ? ' - ' + escapeHtml(end.complemento) : ''}<br>
+                    ${escapeHtml(end.bairro)} - ${escapeHtml(end.cidade)}/${escapeHtml(end.estado)}<br>
+                    CEP: ${formatCEP(end.cep)}
+                `;
+            } else {
+                enderecoHtml = `
+                    <div style="text-align: center; padding: 20px; color: #9ca3af;">
+                        <div style="font-size: 48px; margin-bottom: 12px;">📭</div>
+                        <p>Endereço de entrega não cadastrado</p>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('order-address').innerHTML = enderecoHtml;
+            
+            // ========== ITENS DO PEDIDO ==========
+            const itemsTable = document.getElementById('order-items');
+            itemsTable.innerHTML = '';
+            
+            if (pedido.itens && pedido.itens.length > 0) {
+                let subtotal = 0;
+                
+                pedido.itens.forEach(item => {
+                    const precoUnitario = parseFloat(item.preco_unitario || 0);
+                    const quantidade = parseInt(item.quantidade || 0);
+                    const itemTotal = quantidade * precoUnitario;
+                    subtotal += itemTotal;
+                    
+                    itemsTable.innerHTML += `
+                        <tr>
+                            <td>
+                                ${item.produto_imagem ? 
+                                    `<img src="/rochas/storage/images/${item.produto_imagem}" 
+                                          alt="${escapeHtml(item.produto_nome || item.nome_produto)}" 
+                                          class="product-img"
+                                          onerror="this.style.display='none'">` 
+                                    : ''}
+                                <div class="product-info">
+                                    <span class="product-name">${escapeHtml(item.produto_nome || item.nome_produto)}</span>
+                                    ${item.produto_id ? `<span class="product-sku">ID: ${item.produto_id}</span>` : ''}
+                                </div>
+                            </td>
+                            <td style="text-align: center;">
+                                <span class="qty-badge">${quantidade}x</span>
+                            </td>
+                            <td style="text-align: right;">
+                                <span class="price">${formatMoney(precoUnitario)}</span>
+                                <span class="price-detail">Total: ${formatMoney(itemTotal)}</span>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                // ========== RESUMO FINANCEIRO ==========
+                const frete = parseFloat(pedido.valor_frete || 0);
+                const totalPedido = parseFloat(pedido.total || 0);
+                
+                // Usar subtotal calculado se o do banco estiver zerado
+                const subtotalFinal = parseFloat(pedido.subtotal || subtotal || 0);
+                
+                document.getElementById('order-subtotal').textContent = formatMoney(subtotalFinal);
+                document.getElementById('order-shipping').textContent = formatMoney(frete);
+                document.getElementById('order-total').textContent = formatMoney(totalPedido > 0 ? totalPedido : subtotalFinal + frete);
+                
+                // Informações de frete
+                document.getElementById('shipping-type').textContent = pedido.tipo_frete || 'Não informado';
+                document.getElementById('shipping-days').textContent = pedido.prazo_frete || '0';
+                
+            } else {
+                itemsTable.innerHTML = `
+                    <tr>
+                        <td colspan="3" class="empty-state">
+                            <div style="font-size: 48px;">📦</div>
+                            <p>Nenhum item encontrado neste pedido</p>
+                        </td>
+                    </tr>
+                `;
+                
+                // Mesmo sem itens, mostrar valores do pedido
+                document.getElementById('order-subtotal').textContent = formatMoney(parseFloat(pedido.subtotal || 0));
+                document.getElementById('order-shipping').textContent = formatMoney(parseFloat(pedido.valor_frete || 0));
+                document.getElementById('order-total').textContent = formatMoney(parseFloat(pedido.total || 0));
+                document.getElementById('shipping-type').textContent = pedido.tipo_frete || '-';
+                document.getElementById('shipping-days').textContent = pedido.prazo_frete || '0';
+            }
+            
+            // ========== STATUS ==========
+            document.getElementById('order-status').value = pedido.status;
+            
+            // ========== ABRIR MODAL ==========
+            const modal = document.getElementById('order-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.style.display = 'flex';
+            }
+        } else {
+            showError(pedido.error || 'Erro ao carregar pedido');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        showError('Erro ao carregar pedido: ' + error.message);
+    }
+}
+
+// ===============================
+// FUNÇÕES AUXILIARES
+// ===============================
+
+function getStatusText(status) {
+    const statusMap = {
+        'pending': 'Pendente',
+        'processing': 'Processando',
+        'shipped': 'Enviado',
+        'delivered': 'Entregue',
+        'cancelled': 'Cancelado',
+        'pendente': 'Pendente',
+        'processando': 'Processando',
+        'enviado': 'Enviado',
+        'entregue': 'Entregue',
+        'cancelado': 'Cancelado'
+    };
+    return statusMap[status] || status;
+}
+
+function formatCEP(cep) {
+    if (!cep) return '';
+    // Remove tudo que não é número
+    const numbers = String(cep).replace(/\D/g, '');
+    // Formata: 12345-678
+    if (numbers.length === 8) {
+        return numbers.replace(/(\d{5})(\d{3})/, '$1-$2');
+    }
+    return cep;
+}
+
+function formatMoney(value) {
+    if (!value && value !== 0) return 'R$ 0,00';
+    
+    const num = parseFloat(value);
+    if (isNaN(num)) return 'R$ 0,00';
+    
+    return num.toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
+
+// Adicione esta função ao seu app.js existente (substituindo a viewOrder antiga)
+// E também adicione as funções auxiliares (getStatusText, formatCEP, formatMoney)
+
+// Adicione esta função ao seu app.js existente (substituindo a viewOrder antiga)
 
 console.log('✅ app.js carregado com sucesso');

@@ -133,7 +133,7 @@
                 <span class="summary-price" id="summary-price">R$ 0,00</span>
             </div>
 
-            <button class="finalize-btn" type="button" onclick="finalizePurchase()">
+            <button class="finalize-btn" type="button" onclick="finalizarCompraMP()">
                 Finalizar via WhatsApp
             </button>
 
@@ -144,6 +144,8 @@
 
 <!-- ================= SCRIPT ================= -->
 <script src="/rochas/assets/js/checkout.js"></script>
+<script src="/rochas/assets/js/mpService.js"></script>
+
 
 </body>
 </html>

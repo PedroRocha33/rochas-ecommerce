@@ -1,3 +1,68 @@
+<?php
+// ============================================
+// INÍCIO - BUSCAR DADOS DO BANCO
+// ============================================
+
+session_start();
+
+// Use ../ para voltar uma pasta. Tente um destes dependendo de onde está sua pasta vendor:
+require __DIR__ . '/../../vendor/autoload.php';
+
+use Source\Core\Connect;
+
+try {
+    $pdo = Connect::getInstance();
+    
+    // ✅ 1. BUSCAR CATEGORIAS
+    $stmtCategorias = $pdo->query("
+        SELECT 
+            id,
+            nome,
+            slug
+        FROM categories
+        WHERE ativo = 1
+        ORDER BY nome ASC
+    ");
+    
+    $categorias = $stmtCategorias->fetchAll(PDO::FETCH_OBJ);
+    
+    // ✅ 2. BUSCAR PRODUTOS COM JOIN
+    $stmtProdutos = $pdo->query("
+        SELECT 
+            p.id,
+            p.nome,
+            p.slug,
+            p.descricao,
+            p.preco,
+            p.estoque,
+            p.imagem,
+            p.categoria_id,
+            p.ativo,
+            p.weight,
+            p.width,
+            p.height,
+            p.length,
+            p.criado_em,
+            c.nome as categoria_nome,
+            c.slug as categoria_slug
+        FROM products p
+        LEFT JOIN categories c ON p.categoria_id = c.id
+        WHERE p.ativo = 1
+        ORDER BY p.id DESC
+    ");
+    
+    $products = $stmtProdutos->fetchAll(PDO::FETCH_OBJ);
+    
+} catch (Exception $e) {
+    error_log("Erro ao buscar dados: " . $e->getMessage());
+    $categorias = [];
+    $products = [];
+}
+
+// ============================================
+// FIM - Dados carregados
+// ============================================
+?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -15,10 +80,11 @@
             <div class="logo-container">
                 <img src="/rochas/assets/img/logo-redemac.png" alt="Redemac Logo" class="logo">
             </div>
+            
             <!-- Navigation Menu -->
             <nav class="nav-menu">
                 <div class="nav-item">
-                    <a href="index.html" class="nav-link active" onclick="setActiveNav(this, 'loja')">
+                    <a href="index.php" class="nav-link active">
                         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
                             <polyline points="9,22 9,12 15,12 15,22"></polyline>
@@ -26,45 +92,28 @@
                         Início
                     </a>
                 </div>
-                <!-- <div class="nav-item">
-                    <a href="index.php" class="nav-link" onclick="setActiveNav(this, 'produtos')">
-                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path>
-                            <path d="M3 6h18"></path>
-                            <path d="M16 10a4 4 0 0 1-8 0"></path>
-                        </svg>
-                        Produtos
-                    </a>
-                </div> -->
+                
                 <div class="nav-item">
-                    <a href="sobre.html" class="nav-link" onclick="setActiveNav(this, 'servicos')">
-                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
-                        </svg>
-                        Sobre
-                    </a>
-                </div>
-                <!-- <div class="nav-item">
-                    <a href="calculadoras.html" class="nav-link" onclick="setActiveNav(this, 'sobre')">
-                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <path d="M12 16v-4"></path>
-                            <path d="M12 8h.01"></path>
-                        </svg>
-                        Ferramentas
-                    </a>
-                </div> -->
-                <div class="nav-item">
-                    <a href="contato.html" class="nav-link" onclick="setActiveNav(this, 'contato')">
+                    <a href="contato.html" class="nav-link">
                         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
                         </svg>
                         Contato
                     </a>
                 </div>
+
+                <div class="nav-item">
+                    <a href="<?= url("/login") ?>" class="nav-link">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                            <polyline points="10 17 15 12 10 7"></polyline>
+                            <line x1="15" y1="12" x2="3" y2="12"></line>
+                        </svg>
+                        Login
+                    </a>
+                </div>
             </nav>
 
-            
             <button class="cart-button" onclick="toggleCart()">
                 <svg class="cart-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="9" cy="21" r="1"></circle>
@@ -74,141 +123,105 @@
                 Carrinho
                 <span class="cart-badge" id="cart-badge">0</span>
             </button>
-            
         </div>
-
-         <!-- Hambúrguer Menu Button
-            <div class="hamburger-menu" onclick="toggleMobileMenu()">
-                <div class="hamburger-line"></div>
-                <div class="hamburger-line"></div>
-                <div class="hamburger-line"></div>
-            </div>
-        </div>
-
-        <-- Mobile Menu -->
-        <!-- <div class="mobile-menu" id="mobileMenu">
-            <div class="mobile-menu-content">
-                <div class="mobile-nav-item">
-                    <a href="index.html" class="mobile-nav-link active" onclick="setActiveMobileNav(this, 'loja')">
-                        <svg class="mobile-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                            <polyline points="9,22 9,12 15,12 15,22"></polyline>
-                        </svg>
-                        Início
-                    </a>
-                </div>
-                <div class="mobile-nav-item">
-                    <a href="ecommerce.html" class="mobile-nav-link" onclick="setActiveMobileNav(this, 'produtos')">
-                        <svg class="mobile-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path>
-                            <path d="M3 6h18"></path>
-                            <path d="M16 10a4 4 0 0 1-8 0"></path>
-                        </svg>
-                        Produtos
-                    </a>
-                </div>
-                <div class="mobile-nav-item">
-                    <a href="sobre.html" class="mobile-nav-link" onclick="setActiveMobileNav(this, 'servicos')">
-                        <svg class="mobile-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
-                        </svg>
-                        Sobre
-                    </a>
-                </div>
-
-                <div class="mobile-nav-item">
-                    <a href="calculadoras.html" class="mobile-nav-link" onclick="setActiveMobileNav(this, 'sobre')">
-                        <svg class="mobile-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <path d="M12 16v-4"></path>
-                            <path d="M12 8h.01"></path>
-                        </svg>
-                        Ferramentas
-                    </a>
-                </div>
-                <div class="mobile-nav-item">
-                    <a href="contato.html" class="mobile-nav-link" onclick="setActiveMobileNav(this, 'contato')">
-                        <svg class="mobile-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-                        </svg>
-                        Contato
-                    </a>
-                </div>
-            </div>
-            <div class="mobile-menu-overlay" onclick="toggleMobileMenu()"></div>
-        </div>
-        </div>
-         --> 
-
-
     </div>
 
-    <!-- Filtros -->
+    <!-- Filtros DINÂMICOS (do banco de dados) -->
     <div class="filters-section">
         <div class="filters-content">
-            <button class="filter-btn active" onclick="filterProducts('todos')">Todos os Produtos</button>
-            <button class="filter-btn" onclick="filterProducts('construcao')">Construção</button>
-            <button class="filter-btn" onclick="filterProducts('acabamento')">Acabamento</button>
-            <button class="filter-btn" onclick="filterProducts('eletrica')">Elétrica</button>
-            <button class="filter-btn" onclick="filterProducts('hidraulica')">Hidráulica</button>
-            <button class="filter-btn" onclick="filterProducts('ferramentas')">Ferramentas</button>
+            <!-- Botão "Todos" sempre presente -->
+            <button class="filter-btn active" onclick="filterProducts('todos')" data-category="todos">
+                Todos os Produtos
+            </button>
+            
+            <!-- ✅ CATEGORIAS DINÂMICAS DO BANCO -->
+            <?php if (!empty($categorias)): ?>
+                <?php foreach ($categorias as $categoria): ?>
+                    <button 
+                        class="filter-btn" 
+                        onclick="filterProducts('<?= htmlspecialchars($categoria->slug) ?>')"
+                        data-category="<?= htmlspecialchars($categoria->slug) ?>"
+                    >
+                        <?= htmlspecialchars($categoria->nome) ?>
+                    </button>
+                <?php endforeach; ?>
+            <?php endif; ?>
         </div>
     </div>
 
-   <!-- Grid de Produtos -->
-<div class="main-content">
-    <div class="products-grid" id="products-grid">
+    <!-- Grid de Produtos -->
+    <div class="main-content">
+        <div class="products-grid" id="products-grid">
 
-        <?php if (!empty($products)): ?>
-            <?php foreach ($products as $product): ?>
-                <div class="product-card">
+            <?php if (!empty($products)): ?>
+                <?php foreach ($products as $product): ?>
+                    <div class="product-card" data-category="<?= htmlspecialchars($product->categoria_slug ?? 'todos') ?>">
 
-                    <img 
-                        src="<?= $product->imagem 
-                            ? '/rochas/storage/images/' . htmlspecialchars($product->imagem) 
-                            : '/rochas/assets/img/placeholder.png' ?>"
-                        alt="<?= htmlspecialchars($product->nome) ?>"
-                        class="product-image"
-                    >
+                        <!-- Imagem do Produto -->
+                        <img 
+                            src="<?= $product->imagem 
+                                ? '/rochas/storage/images/' . htmlspecialchars($product->imagem) 
+                                : '/rochas/assets/img/placeholder.png' ?>"
+                            alt="<?= htmlspecialchars($product->nome) ?>"
+                            class="product-image"
+                        >
 
-                    <div class="product-content">
-                        <span class="product-category">
-                            Categoria <?= (int) $product->categoria_id ?>
-                        </span>
+                        <div class="product-content">
+                            <!-- Nome da Categoria -->
+                            <?php if (!empty($product->categoria_nome)): ?>
+                                <span class="product-category">
+                                    <?= htmlspecialchars($product->categoria_nome) ?>
+                                </span>
+                            <?php endif; ?>
 
-                        <h3 class="product-name">
-                            <?= htmlspecialchars($product->nome) ?>
-                        </h3>
+                            <!-- Nome do Produto -->
+                            <h3 class="product-name">
+                                <?= htmlspecialchars($product->nome) ?>
+                            </h3>
 
-                        <p class="product-description">
-                            <?= htmlspecialchars($product->descricao) ?>
-                        </p>
+                            <!-- Descrição -->
+                            <?php if (!empty($product->descricao)): ?>
+                                <p class="product-description">
+                                    <?= htmlspecialchars($product->descricao) ?>
+                                </p>
+                            <?php endif; ?>
 
-                        <div class="product-footer">
-                            <span class="product-price">
-                                R$ <?= number_format($product->preco, 2, ',', '.') ?>
-                            </span>
+                            <!-- Preço e Botão -->
+                            <div class="product-footer">
+                                <span class="product-price">
+                                    R$ <?= number_format($product->preco, 2, ',', '.') ?>
+                                </span>
 
-                            <button 
-                                class="add-to-cart-btn"
-                                data-id="<?= $product->id ?>"
-                                data-nome="<?= htmlspecialchars($product->nome) ?>"
-                                data-preco="<?= $product->preco ?>"
-                            >
-                                +
-                            </button>
+                                <button 
+                                    class="add-to-cart-btn"
+                                    data-id="<?= $product->id ?>"
+                                    data-nome="<?= htmlspecialchars($product->nome) ?>"
+                                    data-preco="<?= $product->preco ?>"
+                                    data-imagem="<?= htmlspecialchars($product->imagem ?? '') ?>"
+                                    onclick="addToCart(this)"
+                                >
+                                    +
+                                </button>
+                            </div>
                         </div>
+
                     </div>
-
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="empty-products">
+                    <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M16 16s-1.5-2-4-2-4 2-4 2"></path>
+                        <line x1="9" y1="9" x2="9.01" y2="9"></line>
+                        <line x1="15" y1="9" x2="15.01" y2="9"></line>
+                    </svg>
+                    <p>Nenhum produto disponível no momento.</p>
+                    <p>Volte mais tarde!</p>
                 </div>
-            <?php endforeach; ?>
-        <?php else: ?>
-            <p>Nenhum produto disponível.</p>
-        <?php endif; ?>
+            <?php endif; ?>
 
+        </div>
     </div>
-</div>
-
 
     <!-- Modal do Carrinho -->
     <div class="cart-modal" id="cart-modal">
@@ -251,7 +264,7 @@
                     Voltar à Loja
                 </button>
                 <div class="checkout-logo">
-                    <img src="/assets/images/logo-redemac.png" alt="Redemac Logo">
+                    <img src="/rochas/assets/img/logo-redemac.png" alt="Redemac Logo">
                     <p>Finalizar Compra</p>
                 </div>
                 <div class="spacer"></div>
@@ -346,6 +359,5 @@
     </div>
 
     <script src="/rochas/assets/js/ecommerce.js"></script>
-    
 </body>
 </html>
