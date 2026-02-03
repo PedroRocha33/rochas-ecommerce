@@ -2,7 +2,9 @@
    ESTADO GLOBAL
 ================================ */
 let cart = JSON.parse(localStorage.getItem('redemac-cart')) || [];
-let freteSelecionado = 0;
+
+// ✅ EXPOR GLOBALMENTE
+window.freteSelecionado = 0;
 
 /* ===============================
    INIT
@@ -56,7 +58,7 @@ function getSubtotal() {
 
 function atualizarTotal() {
     document.getElementById('summary-price').textContent =
-        formatPrice(getSubtotal() + freteSelecionado);
+        formatPrice(getSubtotal() + window.freteSelecionado);
 }
 
 /* ===============================
@@ -123,8 +125,12 @@ function renderFreteOpcoes(fretes) {
 }
 
 function selecionarFrete(valor) {
-    freteSelecionado = Number(valor);
+    // ✅ ATUALIZAR VARIÁVEL GLOBAL
+    window.freteSelecionado = Number(valor);
     atualizarTotal();
+    
+    // ✅ LOG PARA DEBUG
+    console.log('Frete selecionado:', window.freteSelecionado);
 }
 
 /* ===============================
@@ -146,8 +152,8 @@ function finalizePurchase() {
         msg += `- ${i.nome} x${i.quantity}\n`;
     });
 
-    msg += `\nFrete: ${formatPrice(freteSelecionado)}`;
-    msg += `\nTotal: ${formatPrice(getSubtotal() + freteSelecionado)}`;
+    msg += `\nFrete: ${formatPrice(window.freteSelecionado)}`;
+    msg += `\nTotal: ${formatPrice(getSubtotal() + window.freteSelecionado)}`;
 
     window.open(`https://wa.me/55SEUNUMERO?text=${encodeURIComponent(msg)}`);
     localStorage.removeItem('redemac-cart');

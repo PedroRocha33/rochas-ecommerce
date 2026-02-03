@@ -8,41 +8,43 @@ require __DIR__ . '/../../vendor/autoload.php';
 
 use Source\Core\Connect;
 
-// ✅ Carregar variáveis de ambiente
+header('Content-Type: application/json; charset=utf-8');
+
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../../');
 $dotenv->load();
 
-if (!isset($_ENV['MP_ACCESS_TOKEN']) || empty($_ENV['MP_ACCESS_TOKEN'])) {
-    header('Content-Type: application/json; charset=utf-8');
+if (empty($_ENV['MP_ACCESS_TOKEN'])) {
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'MP_ACCESS_TOKEN não configurado']);
     exit;
 }
 
-$data = json_decode(file_get_contents('php://input'), true);
+// 🔍 LER E LOGAR DADOS RECEBIDOS
+$rawInput = file_get_contents('php://input');
+error_log("=== DADOS RECEBIDOS ===");
+error_log($rawInput);
+
+$data = json_decode($rawInput, true);
 
 if (!$data) {
     http_response_code(400);
-    header('Content-Type: application/json; charset=utf-8');
-
-    echo json_encode(['success' => false, 'error' => 'Dados inválidos ou JSON mal formatado']);
+    echo json_encode(['success' => false, 'error' => 'JSON inválido']);
     exit;
 }
 
-// Validações
-if (!isset($data['itens']) || !is_array($data['itens']) || empty($data['itens'])) {
-    http_response_code(400);
-    header('Content-Type: application/json; charset=utf-8');
+// 🔍 LOGAR FRETE RECEBIDO
+error_log("Frete recebido: " . ($data['frete'] ?? 'NÃO ENVIADO'));
+error_log("Tipo do frete: " . gettype($data['frete'] ?? null));
 
-    echo json_encode(['success' => false, 'error' => 'Campo "itens" é obrigatório']);
+if (empty($data['itens']) || !is_array($data['itens'])) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'error' => 'Itens obrigatórios']);
     exit;
 }
 
 if (!isset($data['total']) || !is_numeric($data['total'])) {
     http_response_code(400);
-    header('Content-Type: application/json; charset=utf-8');
-
-    echo json_encode(['success' => false, 'error' => 'Campo "total" é obrigatório']);
+    echo json_encode(['success' => false, 'error' => 'Total inválido']);
     exit;
 }
 
@@ -62,12 +64,8 @@ try {
 
     $pedidoId = $pdo->lastInsertId();
 
-    // 2️⃣ Criar itens do pedido
+    // 2️⃣ Salvar itens do pedido
     foreach ($data['itens'] as $item) {
-        if (!isset($item['produto_id']) || !isset($item['quantidade']) || !isset($item['preco'])) {
-            throw new Exception('Item com dados incompletos');
-        }
-
         $stmt = $pdo->prepare("
             INSERT INTO order_items (pedido_id, produto_id, quantidade, preco)
             VALUES (?, ?, ?, ?)
@@ -80,21 +78,10 @@ try {
         ]);
     }
 
-    // 3️⃣ Criar itens para Mercado Pago
+    // 3️⃣ Itens para o Mercado Pago
     $items = [];
-    foreach ($data['itens'] as $i) {
-        if (!isset($i['nome']) || empty($i['nome'])) {
-            throw new Exception('Campo "nome" é obrigatório');
-        }
-        
-        if (!isset($i['quantidade']) || $i['quantidade'] < 1) {
-            throw new Exception('Quantidade deve ser maior que 0');
-        }
-        
-        if (!isset($i['preco']) || $i['preco'] <= 0) {
-            throw new Exception('Preço deve ser maior que 0');
-        }
 
+    foreach ($data['itens'] as $i) {
         $items[] = [
             'title' => substr($i['nome'], 0, 256),
             'quantity' => (int) $i['quantidade'],
@@ -103,14 +90,30 @@ try {
         ];
     }
 
-    if (empty($items)) {
-        throw new Exception('Nenhum item válido');
+    // ➕ FRETE como item - COM VALIDAÇÃO MELHORADA
+    $freteValor = floatval($data['frete'] ?? 0);
+    
+    error_log("Frete convertido para float: " . $freteValor);
+    
+    if ($freteValor > 0) {
+        $items[] = [
+            'title' => 'Frete',
+            'quantity' => 1,
+            'unit_price' => $freteValor,
+            'currency_id' => 'BRL'
+        ];
+        error_log("✅ Frete adicionado aos itens: R$ " . $freteValor);
+    } else {
+        error_log("⚠️ Frete não adicionado (valor: " . $freteValor . ")");
     }
 
-    // 4️⃣ Criar preferência com URLs COMPLETAS
-    // ✅ CORREÇÃO: URLs devem ser absolutas e válidas
+    // 🔍 LOGAR ITENS FINAIS
+    error_log("=== ITENS PARA MERCADO PAGO ===");
+    error_log(json_encode($items, JSON_PRETTY_PRINT));
+
+    // 4️⃣ Preferência Mercado Pago
     $baseUrl = 'http://localhost/rochas';
-    
+
     $preferenceData = [
         'items' => $items,
         'external_reference' => (string) $pedidoId,
@@ -119,16 +122,10 @@ try {
             'failure' => $baseUrl . '/_checkout/error.php?pedido_id=' . $pedidoId,
             'pending' => $baseUrl . '/_checkout/pending.php?pedido_id=' . $pedidoId
         ],
-        // 'auto_return' => 'approved', // ✅ Agora vai funcionar pois back_urls.success está definida
         'statement_descriptor' => 'ROCHAS'
     ];
 
-    // ✅ Remover notification_url para testes locais (não vai funcionar no localhost)
-    // $preferenceData['notification_url'] = $baseUrl . '/api/mercadopago/webhook.php';
-
-    error_log("Criando preferência MP: " . json_encode($preferenceData, JSON_PRETTY_PRINT));
-
-    // 5️⃣ Fazer requisição
+    // 5️⃣ Criar preferência via API
     $ch = curl_init('https://api.mercadopago.com/checkout/preferences');
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
@@ -136,8 +133,7 @@ try {
         CURLOPT_POSTFIELDS => json_encode($preferenceData),
         CURLOPT_HTTPHEADER => [
             'Authorization: Bearer ' . $_ENV['MP_ACCESS_TOKEN'],
-            'Content-Type: application/json',
-            'X-Idempotency-Key: ' . uniqid('checkout_', true)
+            'Content-Type: application/json'
         ],
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_SSL_VERIFYHOST => false
@@ -145,51 +141,34 @@ try {
 
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlError = curl_error($ch);
     curl_close($ch);
 
-    error_log("MP Response Code: $httpCode");
-    error_log("MP Response: $response");
-
-    if ($curlError) {
-        throw new Exception("Erro cURL: $curlError");
-    }
-
-    if ($httpCode !== 201 && $httpCode !== 200) {
-        $errorDetail = json_decode($response, true);
-        $errorMsg = isset($errorDetail['message']) ? $errorDetail['message'] : 'Erro desconhecido';
-        
-        error_log("Erro MP: " . print_r($errorDetail, true));
-        throw new Exception("Erro ao criar preferência (HTTP $httpCode): $errorMsg");
+    if ($httpCode !== 200 && $httpCode !== 201) {
+        $err = json_decode($response, true);
+        throw new Exception($err['message'] ?? 'Erro ao criar preferência');
     }
 
     $preference = json_decode($response, true);
 
-    if (!isset($preference['init_point'])) {
-        throw new Exception('Resposta inválida da API');
+    if (empty($preference['init_point'])) {
+        throw new Exception('init_point não retornado');
     }
 
     $pdo->commit();
-
-    header('Content-Type: application/json; charset=utf-8');
 
     echo json_encode([
         'success' => true,
         'pedido_id' => $pedidoId,
         'init_point' => $preference['init_point'],
-        'preference_id' => $preference['id'] ?? null
+        'preference_id' => $preference['id']
     ]);
 
 } catch (Exception $e) {
     if (isset($pdo) && $pdo->inTransaction()) {
         $pdo->rollBack();
     }
-    
-    error_log("Erro: " . $e->getMessage());
-    
-    http_response_code(500);
-    header('Content-Type: application/json; charset=utf-8');
 
+    http_response_code(500);
     echo json_encode([
         'success' => false,
         'error' => $e->getMessage()
