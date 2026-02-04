@@ -13,18 +13,21 @@ use Source\Core\Connect;
 try {
     $pdo = Connect::getInstance();
     
-    // ✅ 1. BUSCAR CATEGORIAS
+    // ✅ 1. BUSCAR CATEGORIAS - CORRIGIDO: campo 'ativo' em vez de 'ativa'
     $stmtCategorias = $pdo->query("
         SELECT 
             id,
             nome,
             slug
         FROM categories
-        WHERE ativo = 1
+        WHERE ativa = 1
         ORDER BY nome ASC
     ");
     
     $categorias = $stmtCategorias->fetchAll(PDO::FETCH_OBJ);
+    
+    // Debug: verificar se há categorias
+    error_log("Categorias encontradas: " . count($categorias));
     
     // ✅ 2. BUSCAR PRODUTOS COM JOIN
     $stmtProdutos = $pdo->query("
@@ -52,6 +55,9 @@ try {
     ");
     
     $products = $stmtProdutos->fetchAll(PDO::FETCH_OBJ);
+    
+    // Debug: verificar se há produtos
+    error_log("Produtos encontrados: " . count($products));
     
 } catch (Exception $e) {
     error_log("Erro ao buscar dados: " . $e->getMessage());
@@ -145,6 +151,11 @@ try {
                         <?= htmlspecialchars($categoria->nome) ?>
                     </button>
                 <?php endforeach; ?>
+            <?php else: ?>
+                <!-- Debug: mostrar se não há categorias -->
+                <span style="color: #999; font-size: 12px; padding: 10px;">
+                    (Nenhuma categoria cadastrada no banco)
+                </span>
             <?php endif; ?>
         </div>
     </div>
@@ -198,6 +209,7 @@ try {
                                     data-nome="<?= htmlspecialchars($product->nome) ?>"
                                     data-preco="<?= $product->preco ?>"
                                     data-imagem="<?= htmlspecialchars($product->imagem ?? '') ?>"
+                                    data-estoque="<?= $product->estoque ?? 0 ?>"
                                     onclick="addToCart(this)"
                                 >
                                     +
