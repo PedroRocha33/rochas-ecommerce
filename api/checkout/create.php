@@ -19,12 +19,7 @@ if (empty($_ENV['MP_ACCESS_TOKEN'])) {
     exit;
 }
 
-// 🔍 LER E LOGAR DADOS RECEBIDOS
-$rawInput = file_get_contents('php://input');
-error_log("=== DADOS RECEBIDOS ===");
-error_log($rawInput);
-
-$data = json_decode($rawInput, true);
+$data = json_decode(file_get_contents('php://input'), true);
 
 if (!$data) {
     http_response_code(400);
@@ -32,10 +27,7 @@ if (!$data) {
     exit;
 }
 
-// 🔍 LOGAR FRETE RECEBIDO
-error_log("Frete recebido: " . ($data['frete'] ?? 'NÃO ENVIADO'));
-error_log("Tipo do frete: " . gettype($data['frete'] ?? null));
-
+// Validações
 if (empty($data['itens']) || !is_array($data['itens'])) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'Itens obrigatórios']);
@@ -52,33 +44,100 @@ try {
     $pdo = Connect::getInstance();
     $pdo->beginTransaction();
 
-    // 1️⃣ Criar pedido
+    // Calcular subtotal
+    $subtotal = 0;
+    foreach ($data['itens'] as $item) {
+        $subtotal += floatval($item['preco']) * intval($item['quantidade']);
+    }
+
+    $frete = floatval($data['frete'] ?? 0);
+    $total = floatval($data['total']);
+
+    // 1️⃣ Criar pedido usando as colunas que EXISTEM no seu banco
     $stmt = $pdo->prepare("
-        INSERT INTO orders (usuario_id, total, status)
-        VALUES (?, ?, 'pendente')
+        INSERT INTO orders (
+            usuario_id,
+            subtotal,
+            total,
+            valor_frete,
+            tipo_frete,
+            prazo_frete,
+            status
+        ) VALUES (?, ?, ?, ?, ?, ?, 'pendente')
     ");
+    
     $stmt->execute([
         $_SESSION['usuario_id'] ?? 1,
-        $data['total']
+        $subtotal,
+        $total,
+        $frete,
+        $data['tipo_frete'] ?? null,
+        $data['prazo_frete'] ?? null
     ]);
 
     $pedidoId = $pdo->lastInsertId();
 
-    // 2️⃣ Salvar itens do pedido
-    foreach ($data['itens'] as $item) {
+    // 2️⃣ Salvar endereço na tabela order_addresses
+    if (!empty($data['endereco']) && !empty($data['cliente'])) {
         $stmt = $pdo->prepare("
-            INSERT INTO order_items (pedido_id, produto_id, quantidade, preco)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO order_addresses (
+                pedido_id,
+                nome,
+                telefone,
+                email,
+                cep,
+                rua,
+                numero,
+                complemento,
+                bairro,
+                cidade,
+                estado
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
+        
         $stmt->execute([
             $pedidoId,
-            $item['produto_id'],
-            $item['quantidade'],
-            $item['preco']
+            $data['cliente']['nome'],
+            $data['cliente']['telefone'],
+            $data['cliente']['email'],
+            $data['endereco']['cep'],
+            $data['endereco']['rua'],
+            $data['endereco']['numero'],
+            $data['endereco']['complemento'] ?? '',
+            $data['endereco']['bairro'],
+            $data['endereco']['cidade'],
+            $data['endereco']['estado']
         ]);
     }
 
-    // 3️⃣ Itens para o Mercado Pago
+    // 3️⃣ Salvar itens do pedido usando as colunas que EXISTEM
+    foreach ($data['itens'] as $item) {
+        $quantidade = intval($item['quantidade']);
+        $precoUnitario = floatval($item['preco']);
+        $subtotalItem = $quantidade * $precoUnitario;
+        
+        $stmt = $pdo->prepare("
+            INSERT INTO order_items (
+                pedido_id,
+                produto_id,
+                nome_produto,
+                quantidade,
+                preco_unitario,
+                preco
+            ) VALUES (?, ?, ?, ?, ?, ?)
+        ");
+        
+        $stmt->execute([
+            $pedidoId,
+            $item['produto_id'] ?? null,
+            $item['nome'],
+            $quantidade,
+            $precoUnitario,
+            $subtotalItem
+        ]);
+    }
+
+    // 4️⃣ Itens para o Mercado Pago
     $items = [];
 
     foreach ($data['itens'] as $i) {
@@ -90,42 +149,44 @@ try {
         ];
     }
 
-    // ➕ FRETE como item - COM VALIDAÇÃO MELHORADA
-    $freteValor = floatval($data['frete'] ?? 0);
-    
-    error_log("Frete convertido para float: " . $freteValor);
-    
-    if ($freteValor > 0) {
+    // Adicionar frete como item
+    if ($frete > 0) {
         $items[] = [
             'title' => 'Frete',
             'quantity' => 1,
-            'unit_price' => $freteValor,
+            'unit_price' => $frete,
             'currency_id' => 'BRL'
         ];
-        error_log("✅ Frete adicionado aos itens: R$ " . $freteValor);
-    } else {
-        error_log("⚠️ Frete não adicionado (valor: " . $freteValor . ")");
     }
 
-    // 🔍 LOGAR ITENS FINAIS
-    error_log("=== ITENS PARA MERCADO PAGO ===");
-    error_log(json_encode($items, JSON_PRETTY_PRINT));
-
-    // 4️⃣ Preferência Mercado Pago
+    // 5️⃣ Criar preferência Mercado Pago
     $baseUrl = 'http://localhost/rochas';
 
     $preferenceData = [
         'items' => $items,
         'external_reference' => (string) $pedidoId,
-        'back_urls' => [
-            'success' => $baseUrl . '/_checkout/success.php?pedido_id=' . $pedidoId,
-            'failure' => $baseUrl . '/_checkout/error.php?pedido_id=' . $pedidoId,
-            'pending' => $baseUrl . '/_checkout/pending.php?pedido_id=' . $pedidoId
+        'payer' => [
+            'name' => $data['cliente']['nome'] ?? '',
+            'email' => $data['cliente']['email'] ?? '',
+            'phone' => [
+                'number' => $data['cliente']['telefone'] ?? ''
+            ],
+            'address' => [
+                'zip_code' => $data['endereco']['cep'] ?? '',
+                'street_name' => $data['endereco']['rua'] ?? '',
+                'street_number' => $data['endereco']['numero'] ?? ''
+            ]
         ],
+        'back_urls' => [
+            'success' => $baseUrl . '/checkout/success.php?pedido_id=' . $pedidoId,
+            'failure' => $baseUrl . '/checkout/error.php?pedido_id=' . $pedidoId,
+            'pending' => $baseUrl . '/checkout/pending.php?pedido_id=' . $pedidoId
+        ],
+        'notification_url' => $baseUrl . '/api/mercadopago/webhook.php',
         'statement_descriptor' => 'ROCHAS'
     ];
 
-    // 5️⃣ Criar preferência via API
+    // 6️⃣ Enviar para Mercado Pago
     $ch = curl_init('https://api.mercadopago.com/checkout/preferences');
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
@@ -168,6 +229,8 @@ try {
         $pdo->rollBack();
     }
 
+    error_log("Erro ao criar pedido: " . $e->getMessage());
+    
     http_response_code(500);
     echo json_encode([
         'success' => false,

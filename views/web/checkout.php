@@ -16,16 +16,16 @@
     <div class="checkout-header">
         <div class="checkout-header-content">
 
-            <button class="back-btn" type="button" onclick="backToStore()">
+            <a href="<?= url("/") ?>"><button class="back-btn" type="button" onclick="backToStore()">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="m12 19-7-7 7-7"></path>
                     <path d="M19 12H5"></path>
                 </svg>
                 Voltar à Loja
-            </button>
+            </button></a>
 
             <div class="checkout-logo">
-                <img src="/assets/images/logo-redemac.png" alt="Redemac">
+                <img src="/rochas/assets/img/logo-redemac.png" alt="Redemac">
                 <p>Finalizar Compra</p>
             </div>
 

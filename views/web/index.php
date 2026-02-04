@@ -247,7 +247,7 @@ try {
                     <span>Total:</span>
                     <span class="total-price" id="total-price">R$ 0,00</span>
                 </div>
-                <button class="checkout-btn" onclick="goToCheckout()">Finalizar Compra</button>
+                <a href="<?= url("/checkout") ?>"><button class="checkout-btn">Finalizar Compra</button></a>
             </div>
         </div>
     </div>
