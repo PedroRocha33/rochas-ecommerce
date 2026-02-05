@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Checkout - Redemac</title>
 
-    <link rel="icon" href="/assets/images/redemac-icon.jpg">
+    <link rel="icon" href="/rochas/assets/img/redemac-icon.jpg">
     <link rel="stylesheet" href="/rochas/assets/css/checkout.css">
 </head>
 <body>

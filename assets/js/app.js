@@ -1,5 +1,46 @@
 // app.js
 // ===============================
+// SISTEMA DE TOAST
+// ===============================
+function showToast(message, type = 'info') {
+    // Remover toast anterior se existir
+    const existingToast = document.querySelector('.toast');
+    if (existingToast) {
+        existingToast.remove();
+    }
+    
+    // Criar elemento do toast
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    
+    // Ícones por tipo
+    const icons = {
+        success: '✅',
+        error: '❌',
+        warning: '⚠️',
+        info: 'ℹ️'
+    };
+    
+    toast.innerHTML = `
+        <span class="toast-icon">${icons[type] || icons.info}</span>
+        <span class="toast-message">${message}</span>
+        <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+    `;
+    
+    // Adicionar ao body
+    document.body.appendChild(toast);
+    
+    // Animar entrada
+    setTimeout(() => toast.classList.add('show'), 10);
+    
+    // Remover automaticamente após 4 segundos
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
+// ===============================
 // ESTADO GLOBAL
 // ===============================
 let allProducts = [];
@@ -91,7 +132,7 @@ function previewImage(event) {
     
     // Validar tamanho (máx 5MB)
     if (file.size > 5 * 1024 * 1024) {
-        alert('❌ Arquivo muito grande! Tamanho máximo: 5MB');
+        showToast('Arquivo muito grande! Tamanho máximo: 5MB', 'error');
         event.target.value = '';
         return;
     }
@@ -99,7 +140,7 @@ function previewImage(event) {
     // Validar tipo
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
     if (!allowedTypes.includes(file.type)) {
-        alert('❌ Formato inválido! Use: JPG, PNG, WEBP ou GIF');
+        showToast('Formato inválido! Use: JPG, PNG, WEBP ou GIF', 'error');
         event.target.value = '';
         return;
     }
@@ -162,7 +203,7 @@ async function loadProducts() {
             
             // Se não autorizado, redirecionar para login
             if (response.status === 401) {
-                alert('Sessão expirada. Redirecionando para login...');
+                showToast('Sessão expirada. Redirecionando para login...', 'warning');
                 setTimeout(() => {
                     window.location.href = '/rochas/login.php';
                 }, 2000);
@@ -288,7 +329,7 @@ async function saveProduct(event) {
     console.log('Preço:', preco);
     
     if (!nome || !preco) {
-        alert('❌ Nome e preço são obrigatórios!');
+        showToast('Nome e preço são obrigatórios!', 'error');
         return;
     }
     
@@ -707,11 +748,11 @@ function formatDate(dateString) {
 }
 
 function showSuccess(message) {
-    alert('✅ ' + message);
+    showToast(message, 'success');
 }
 
 function showError(message) {
-    alert('❌ ' + message);
+    showToast(message, 'error');
 }
 
 async function logout() {
@@ -728,11 +769,11 @@ async function logout() {
         if (data.success) {
             window.location.href = 'http://localhost/rochas/login';
         } else {
-            alert('Erro ao sair');
+            showToast('Erro ao sair', 'error');
         }
     } catch (error) {
         console.error('Erro no logout:', error);
-        alert('Erro ao conectar com o servidor');
+        showToast('Erro ao conectar com o servidor', 'error');
     }
 }
 

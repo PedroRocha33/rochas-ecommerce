@@ -22,6 +22,7 @@ $nivel_texto = ($_SESSION['nivel'] ?? 1) == 3 ? 'Administrador' : 'Gerente';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Administração</title>
+    <link rel="stylesheet" href="/rochas/assets/css/app/toast.css">
     <link rel="stylesheet" href="/rochas/assets/css/app/app.css">
     <style>
         /* ==========================================

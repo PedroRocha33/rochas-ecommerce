@@ -74,8 +74,8 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Redemac - Materiais de Construção</title>
-    <link rel="icon" href="assets/images/redemac-icon.jpg">
+    <title>Rochas - Materiais de Construção</title>
+    <link rel="icon" href="/rochas/assets/img/redemac-icon.jpg">
     <link rel="stylesheet" href="/rochas/assets/css/_theme.css">
     <link rel="stylesheet" href="/rochas/assets/css/cart.css">
 </head>

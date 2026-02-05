@@ -1,13 +1,9 @@
 <?php
 session_start();
-
-// Destruir todas as variáveis de sessão
-$_SESSION = array();
-
-// Destruir a sessão
 session_destroy();
 
-// Redirecionar para a página de login
-header('Location: /rochas/login.php');
+header('Content-Type: application/json');
+echo json_encode([
+    'success' => true
+]);
 exit;
-?>

@@ -1,0 +1,123 @@
+/* ===============================
+   SISTEMA DE TOAST
+   =============================== */
+
+.toast {
+    position: fixed;
+    top: -100px;
+    right: 20px;
+    min-width: 300px;
+    max-width: 500px;
+    background: white;
+    border-radius: 12px;
+    padding: 16px 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 10000;
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    border-left: 4px solid #cbd5e1;
+}
+
+.toast.show {
+    top: 20px;
+    animation: slideIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.toast-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.toast-message {
+    flex: 1;
+    font-size: 14px;
+    color: #1f2937;
+    line-height: 1.5;
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #9ca3af;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.toast-close:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+/* Tipos de Toast */
+.toast-success {
+    border-left-color: #10b981;
+    background: #f0fdf4;
+}
+
+.toast-success .toast-message {
+    color: #065f46;
+}
+
+.toast-error {
+    border-left-color: #ef4444;
+    background: #fef2f2;
+}
+
+.toast-error .toast-message {
+    color: #991b1b;
+}
+
+.toast-warning {
+    border-left-color: #f59e0b;
+    background: #fffbeb;
+}
+
+.toast-warning .toast-message {
+    color: #92400e;
+}
+
+.toast-info {
+    border-left-color: #3b82f6;
+    background: #eff6ff;
+}
+
+.toast-info .toast-message {
+    color: #1e40af;
+}
+
+/* Animação de entrada */
+@keyframes slideIn {
+    from {
+        top: -100px;
+        opacity: 0;
+    }
+    to {
+        top: 20px;
+        opacity: 1;
+    }
+}
+
+/* Responsivo */
+@media (max-width: 640px) {
+    .toast {
+        right: 10px;
+        left: 10px;
+        min-width: auto;
+        max-width: none;
+    }
+    
+    .toast.show {
+        top: 10px;
+    }
+}
