@@ -506,3 +506,33 @@ body {
   height: 48px;
   margin-bottom: 8px;
 }
+
+.site-footer {
+    width: 100%;
+    background: #0f172a; /* azul escuro elegante */
+    padding: 20px 10px;
+    margin-top: 40px;
+}
+
+.footer-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.site-footer p {
+    color: #cbd5e1;
+    font-size: 14px;
+}
+
+.site-footer a {
+    color: #38bdf8;
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.site-footer a:hover {
+    color: #0ea5e9;
+    text-decoration: underline;
+}
