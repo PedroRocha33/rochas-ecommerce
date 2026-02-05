@@ -56,6 +56,8 @@ try {
     $pedidoId = $payment['external_reference'];
     $status = $payment['status'];
 
+    file_put_contents($logFile, "Pedido: {$pedidoId} | Status MP: {$status}\n", FILE_APPEND);
+
     // Mapear status do Mercado Pago para status do pedido
     $statusMap = [
         'approved' => 'pago',
@@ -68,11 +70,96 @@ try {
 
     $novoStatus = $statusMap[$status] ?? 'pendente';
 
-    // Atualizar pedido no banco
+    // Conectar ao banco
     $pdo = Connect::getInstance();
+    $pdo->beginTransaction();
+
+    // ============================================
+    // ✅ ATUALIZAR ESTOQUE (APENAS SE APROVADO)
+    // ============================================
     
-    // Como seu banco não tem as colunas payment_id e payment_status,
-    // vamos apenas atualizar o status
+    if ($status === 'approved') {
+        file_put_contents($logFile, "=== PAGAMENTO APROVADO - ATUALIZANDO ESTOQUE ===\n", FILE_APPEND);
+        
+        // Buscar os itens do pedido
+        $stmtOrder = $pdo->prepare("
+            SELECT items_json 
+            FROM orders 
+            WHERE id = ?
+        ");
+        $stmtOrder->execute([$pedidoId]);
+        $order = $stmtOrder->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$order) {
+            throw new Exception("Pedido #{$pedidoId} não encontrado no banco");
+        }
+        
+        // Decodificar os itens
+        $items = json_decode($order['items_json'], true);
+        
+        if (!$items || !is_array($items)) {
+            throw new Exception("Itens do pedido inválidos");
+        }
+        
+        file_put_contents($logFile, "Total de itens: " . count($items) . "\n", FILE_APPEND);
+        
+        // Atualizar estoque de cada produto
+        foreach ($items as $item) {
+            $productId = $item['id'] ?? $item['product_id'] ?? null;
+            $quantity = $item['quantity'] ?? $item['quantidade'] ?? 0;
+            
+            if (!$productId || !$quantity) {
+                file_put_contents($logFile, "AVISO: Item sem ID ou quantidade válida\n", FILE_APPEND);
+                continue;
+            }
+            
+            // Buscar produto atual
+            $stmtProduct = $pdo->prepare("
+                SELECT id, nome, estoque 
+                FROM products 
+                WHERE id = ?
+            ");
+            $stmtProduct->execute([$productId]);
+            $product = $stmtProduct->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$product) {
+                file_put_contents($logFile, "AVISO: Produto ID {$productId} não encontrado\n", FILE_APPEND);
+                continue;
+            }
+            
+            $estoqueAtual = (int) $product['estoque'];
+            $novoEstoque = $estoqueAtual - $quantity;
+            
+            // Não permitir estoque negativo
+            if ($novoEstoque < 0) {
+                file_put_contents($logFile, 
+                    "AVISO: Estoque insuficiente para '{$product['nome']}' (Atual: {$estoqueAtual}, Vendido: {$quantity})\n", 
+                    FILE_APPEND
+                );
+                $novoEstoque = 0;
+            }
+            
+            // Atualizar estoque
+            $stmtUpdate = $pdo->prepare("
+                UPDATE products 
+                SET estoque = ? 
+                WHERE id = ?
+            ");
+            $stmtUpdate->execute([$novoEstoque, $productId]);
+            
+            file_put_contents($logFile, 
+                "✅ Produto: {$product['nome']} | Estoque: {$estoqueAtual} → {$novoEstoque}\n", 
+                FILE_APPEND
+            );
+        }
+        
+        file_put_contents($logFile, "=== ESTOQUE ATUALIZADO COM SUCESSO ===\n", FILE_APPEND);
+    }
+
+    // ============================================
+    // ATUALIZAR STATUS DO PEDIDO
+    // ============================================
+    
     $stmt = $pdo->prepare("
         UPDATE orders 
         SET status = ?
@@ -89,7 +176,10 @@ try {
         FILE_APPEND
     );
 
-    // Opcionalmente, salvar na tabela payments
+    // ============================================
+    // SALVAR PAGAMENTO
+    // ============================================
+    
     $stmt = $pdo->prepare("
         INSERT INTO payments (pedido_id, metodo, status, referencia, valor)
         VALUES (?, 'mercadopago', ?, ?, ?)
@@ -105,10 +195,20 @@ try {
         $payment['transaction_amount'] ?? 0
     ]);
 
+    // Commit das transações
+    $pdo->commit();
+
     http_response_code(200);
     echo json_encode(['success' => true]);
 
 } catch (Exception $e) {
-    file_put_contents($logFile, "Erro: " . $e->getMessage() . "\n", FILE_APPEND);
+    // Rollback em caso de erro
+    if (isset($pdo) && $pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+    
+    file_put_contents($logFile, "ERRO: " . $e->getMessage() . "\n", FILE_APPEND);
+    file_put_contents($logFile, "Stack trace: " . $e->getTraceAsString() . "\n", FILE_APPEND);
+    
     http_response_code(500);
 }
